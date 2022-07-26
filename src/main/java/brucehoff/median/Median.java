@@ -1,24 +1,42 @@
 package brucehoff.median;
 
+import java.util.Arrays;
+
 public class Median {
     
-	
 	/*
-	 * return the median of an ordered array
+	 * return the median of a subrange of an ordered array
 	 */
-	public static double median(int[] in) {
+	public static double median(int[] in, int min, int max) {
 		if (in.length==0) {
 			throw new IllegalArgumentException();
 		}
-		int i = in.length/2 - 1;
-		if (in.length % 2 == 0) {
-			// even
+		if (min<0 || min>in.length-1) throw new IllegalArgumentException("invalid min");
+		if (max<0 || max>in.length-1) throw new IllegalArgumentException("invalid max");
+		if (min>max) throw new IllegalArgumentException("min cannot be greater than max");
+		int i = (min+max)/2;
+		if ((min+max) % 2 == 0) {
+			// range min->max is odd
+			return in[i];
+		} else { // rand min->max is even
 			return ((double)in[i] + (double)in[i+1])/2;
-		} else {
-			return in[i+1];
 		}
 	}
 	
+	// Although this uses methods like 'arraycopy' and 'sort'
+	// it has O(1) time complexity since it only allows inputs
+	// of a short maximum length
+	public static double medianOfShortArrays(int[] x, int xstart, int xlength, int[] y, int ystart, int ylength) {
+		if (xlength+ylength>6) throw new IllegalArgumentException("Input too long.");
+		int[] combined = new int[xlength+ylength];
+		System.arraycopy(x, xstart, combined, 0, xlength);
+		System.arraycopy(y, ystart, combined, xlength, ylength);
+		Arrays.sort(combined);
+		return median(combined, 0, combined.length-1);
+	}
+	
+	private static final int MAX_ITERS = 100;
+	private static final int MINIMUM_ARRAY_LENGTH = 2;
 	/*
 	 * Find the median value in two ordered arrays
 	 */
@@ -26,154 +44,82 @@ public class Median {
 		
 		if (x==null) throw new IllegalArgumentException("x can't be null.");
 		if (y==null) throw new IllegalArgumentException("y can't be null.");
-		
-		// the logic below is simpler if we know that x is never longer than y
-		if (x.length>y.length) {
-			int[] temp = x;
-			x = y;
-			y = temp;
-		}
-		
+				
 		int n = x.length;
 		int m = y.length;
 		
 		if (n == 0 && m == 0) {
 			throw new IllegalArgumentException("No values to find the median of.");
 		}
-		if (n == 0) {
-			return median(y);
-		}
-		if (m == 0) {
-			return median(x);
-		}
 		
-		// now we know we have two non empty arrays
-		int xmin = 0; // the leftmost value in x which can be the median
-		int xmax = n-1; // the rightmost value in x which can be the median
-		int ymin = 0; // the leftmost value in y which can be the median
-		int ymax = m-1; // the rightmost value in y which can be the median
+		int xmin = 0; // the leftmost value in x that contributes to the median
+		int xmax = n-1; // the rightmost value in x that contributes to the median
+		int ymin = 0; // the leftmost value in y that contributes to the median
+		int ymax = m-1; // the rightmost value in y that contributes to the median
 		
 		
-		if (((n+m) % 2) == 1) { // n+m is odd
-			int j = (m-n-1)/2;
-			// j is a valid index into y iff j>=0 and j<m
-			// since m>n and m+n is odd, m>=n+1
-			// so m-n>=1
-			// or m-n-1>=0
-			// or (m-n-1)/2>=0
-			// so the lower bound is satisfied
-			// Since n>0, clearly the upper bound is satisifed
-			int k = (m+n-1)/2;
-			// k is a valid index into y iff k>=0 and k<m
-			// TODO Prove it
-			if (x[xmax]<=y[j]) {
-				// then all (n) of x and j of y are <= of y[j]
-				// while m-1 - j of y are >= y[j]
-				// but these two are equal:
-				// n+j ?== m-1-j
-				// n+(m-n-1)/2 ?== m-1-(m-n-1)/2
-				// (2n+m-n-1)/2  ?== (2m-2-m+n+1)/2
-				// (m+n-1)/2 == (m+n-1)/2
-				// so y[j] is the median
-				return y[j];
-			} else if (x[0]>=y[k]) {
-				// then all (n) of x and m-1-k of y are >= y[k]
-				// TODO prove y[k] is the median
-				return y[k];
-			} else {
-				// we now know that xmax will never "overrun" n-1
-				// i.e. x[n-1] will 
+		// TODO The following eliminates values from the both arrays,
+		// but when one array is very small it doesn't help. In that case
+		// we need to eliminate outliers from the larger array.
+		for (int c=0; c<MAX_ITERS; c++) {
+			if (xmax<xmin) {
+				// we've gotten rid of all the x values and just return the median of y
+				return median(y, ymin, ymax);
 			}
-		} else { // n+m even
-			int j = (m-n)/2-1;
-			int k = (m+n)/2-1;
-			if (x[xmax]<=y[j]) {
-				return 0.5d * (y[j]+y[j+1]);
-			} else if (x[0]>=y[k+1]) {
-				return 0.5d * (y[k]+y[k+1]);
-			} else {
-				// TODO The remaining cases should help below when
-				// we need to update the min and max values				
+			
+			if (ymax<ymin) {
+				// we've gotten rid of all the y values and just return the median of x
+				return median(x, xmin, xmax);
 			}
-		}
-		
-		
-		// below, i is the index into x and j is in the index into y
-		// the # of values left of x[i] = i
-		// the # of values left of y[j] = j
-		// the # of value left of x[i] and y[j] = i+j
-		// the # of values right of x[i] = n-1-i
-		// the # of values right of y[j] = m-1-j
-		// the # of values right of x[i] and y[j] = n+m-2 - (i+j)
-		
-		int i = n / 2 - 1;
-		int iplusj = (n+m)/2-1; // i+j always sum to this
-		// if n+m is even then the # of values right of x[i] and y[j]: 
-		// = n+m-2 - (i+j)
-		// = n+m-2 - (n+m)/2+1
-		// = (n+m)/2 - 1
-		// = iplusj, i.e. the # of values left of x[i] and y[j]
-		//
-		// if n+m is odd then
-		// iplusj = (n+m)/2 - 0.5 - 1, since integer division 'rounds down'
-		// if n+m is odd then # values right of x[i] and y[j]:
-		// = n+m-2 - (i+j)
-		// = n+m-2 - [(n+m)/2 - 0.5 - 1]
-		// = n+m-2 - (n+m)/2 + 0.5 + 1
-		// = (n+m)/2 - 0.5
-		// = iplusj + 1
-		// i.e. the # of values right of x[i] and y[j] are one more than the number of values to the left
-		
-		int j = iplusj - i;
-		
-		while (true) {
-			if (x[i] == y[j]) {
-				// If n+m is even, the median is the average of x[i] & y[j]
-				// which is just x[i], since they're the same.
-				// If n+m is odd, then the median is also this value
-				// since the number left is just one less than the number right, and
-				// one of x[i] and y[j] can be 'added to the left tally', leaving 
-				// the other in the center.
-				return x[i];
-			} else if (x[i] > y[j]) {
-				// the number of values left of x[i] in an imaginary, combined array are:
-				//	1 (for y[j]) plus
-				//	i (all values left of i in the x array) plus
-				//	j (all the values left of j in the y array)
-				//	0 or more values right of j
-				// >= 1+i+j
-				// If n+m is even:
-				// 	1+i+j = 1 + (n+m)/2-1 = (n+m)/2
-				// if n+m is odd:
-				// 	1+i+j = 1 + (n+m)/2 - 0.5 - 1 = (n+m)/2 - 0.5
-				// 	So the number of values left of x[i] would be:
-				// 	>=(n+m)/2 or >= (n+m)/2 - 0.5
-				// Any value *right* of x[i] would have more than half of the
-				// values to its left and so cannot be the median.
-				//
-				// By similar logic, no value to the *left* of y[j] can
-				// be the median value of the combined arrays.
+			
+			if ((xmax-xmin+1) + (ymax-ymin+1) <= 6) {
+				// if there are 6 or fewer values left, then we can wrap things up
+				return medianOfShortArrays(x, xmin, xmax-xmin+1, y, ymin, ymax-ymin+1);
+			}
+
+			// if the two arrays are of comparable length, we can eliminate O(n+m)
+			// values from the left of one array and the right of the other
+			int i = (xmax+xmin)/2;
+			int j = (ymax+ymin)/2;
+			if (x[i] >= y[j]) {
+				// we know that x[i] and the values to its right are  >= than y[j] and the values to its left
+				// so we can 'throw out' an equal number of x & y values from the 
+				// top of the x range and the bottom of the y range
+				int numToDiscard = Math.min(j-ymin+1, xmax-i+1);
 				
-				xmax = i;
-				ymin = j;
+				// mustn't encroach on the final two values in either array
+				numToDiscard = Math.min(numToDiscard, xmax-xmin-MINIMUM_ARRAY_LENGTH+1);
+				numToDiscard = Math.min(numToDiscard, ymax-ymin-MINIMUM_ARRAY_LENGTH+1);
+				
+				xmax -= numToDiscard;
+				ymin += numToDiscard;
 			} else { // x[i] < y[j]
-				ymax = j;
-				xmin = i;
+				int numToDiscard = Math.min(i-xmin+1, ymax-j+1);
+				// mustn't encroach on the final two values in either array
+				numToDiscard = Math.min(numToDiscard, xmax-xmin-MINIMUM_ARRAY_LENGTH+1);
+				numToDiscard = Math.min(numToDiscard, ymax-ymin-MINIMUM_ARRAY_LENGTH+1);
+				
+				xmin += numToDiscard;
+				ymax -= numToDiscard;
 			}
 			
-			// TODO This is right for even n+m.  What about odd?
-			if (xmax <= xmin && ymax <= ymin) {
-				return ((double)x[xmin]+(double)y[ymin])/2.0;
+			
+			// if one array is much longer than the other, we can
+			// eliminate o(|n-m|) values from the left and right of the longer array
+			// if the length difference is o(n+m) then the number eliminated
+			// is o(n+m).
+			if (xmax-xmin > ymax-ymin) {
+				int halfToDiscardFromX = ((xmax-xmin)-(ymax-ymin)-1)/2;
+				xmax -= halfToDiscardFromX;
+				xmin += halfToDiscardFromX;
+			} else {
+				int halfToDiscardFromY = ((ymax-ymin)-(xmax-xmin)-1)/2;
+				ymax -= halfToDiscardFromY;
+				ymin += halfToDiscardFromY;
 			}
-			
-			// we want to keep halving the xmin-xmax range until xmin=xmax
-			int deltai = (xmax-xmin)/2;
-			
-			// TODO how do we update i?
-			j = iplusj - i;  // we always do this, to guarantee that i+j is constant
-			// TODO what if j<0 or j>m-1?  This can happen when n>m, so i 'wants' to make
-			// a bigger adjustment than j can make
 		}
+		
+		throw new IllegalStateException("Failed to converge after "+MAX_ITERS+" iterations.");
 	}
 	
     public static void main(String[] args) {

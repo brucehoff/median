@@ -31,6 +31,7 @@ public class MedianTest {
     @Test
     public void testMedian4() {
     	assertEquals(4, Median.median(new int[] {1,2,3}, new int[] {4,5,6,7}));
+    	assertEquals(4, Median.median(new int[] {4,5,6,7}, new int[] {1,2,3}));
     }
 
     @Test

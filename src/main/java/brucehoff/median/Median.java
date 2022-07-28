@@ -57,10 +57,6 @@ public class Median {
 		int ymin = 0; // the leftmost value in y that contributes to the median
 		int ymax = m-1; // the rightmost value in y that contributes to the median
 		
-		
-		// TODO The following eliminates values from the both arrays,
-		// but when one array is very small it doesn't help. In that case
-		// we need to eliminate outliers from the larger array.
 		for (int c=0; c<MAX_ITERS; c++) {
 			if (xmax<xmin) {
 				// we've gotten rid of all the x values and just return the median of y
@@ -72,8 +68,8 @@ public class Median {
 				return median(x, xmin, xmax);
 			}
 			
+			// if there are 6 or fewer values left, then we can wrap things up
 			if ((xmax-xmin+1) + (ymax-ymin+1) <= 6) {
-				// if there are 6 or fewer values left, then we can wrap things up
 				return medianOfShortArrays(x, xmin, xmax-xmin+1, y, ymin, ymax-ymin+1);
 			}
 
